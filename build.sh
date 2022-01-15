@@ -15,20 +15,28 @@
 
 #!/bin/bash
 
-if ! service docker restart >/dev/null 2>&1
+if ! service docker start >/dev/null 2>&1
 then
     # for those with open-rc
-    if ! rc-service docker restart
+    if ! rc-service docker start
     then
         echo "Could not start Docker."
         exit 15
     fi
 fi
 
+if ! awk --version > /dev/null 2>&1
+then
+  echo "You should install 'awk'"
+  exit 1
+fi
+
 DOCKERFILE="Dockerfile"
-MERCURY_REV_TEST="$(grep '^m-rev' .config | cut -f 2 -d\ )"
-ROTD_DATE_TEST="$(grep '^rotd-date' .config | cut -f2 -d\ )"
-THREADS_FOUND=$(grep threads .config | cut -f2 -d\ )
+MERCURY_REV_TEST="$(awk '/^m-rev/ {print $2}' .config)"
+echo "Building Mercury revision: ${MERCURY_REV_TEST}"
+ROTD_DATE_TEST="$(awk '/^rotd-date/ {print $2}' .config)"
+echo "Building ROTD date: ${ROTD_DATE_TEST}"
+THREADS_FOUND="$(awk '/^threads/ {print $2}' .config)"
 case "${THREADS_FOUND}" in
     ''|*[!0-9]*)
         echo "ERR: Could not find 'threads' in .config file."
@@ -39,11 +47,33 @@ case "${THREADS_FOUND}" in
         echo "Building with ${THREADS_FOUND} jobs"
         ;;
 esac
+BOOTSTRAP_COMPILER_URL="$(awk '/^bootstrap-url/ {print $2}' .config)" 
+BOOTSTRAP_COMPILER_NAME="$(awk '/^bootstrap-name/ {print $2}' .config)"
+BOOTSTRAP_COMPILER_DATE="$(awk '/^bootstrap-date/ {print $2}' .config)"
+GIT_SOURCE_SINCE="$(awk '/^since/ {print $2}' .config)"
+MERCURY_GIT_URL="$(awk '/^url/ {print $2}' .config)"
+MERCURY_DEFAULT_REV="$(awk '/^default-rev/ {print $2}' .config)"
+# Emacs can sometimes crash
+# In .config, a reference revision hash is given for a successful build
+# If either is left blank, HEAD is used in the Emacs git repository master branch.
+EMACS_REV_TEST="$(awk '/^emacs-rev/ {print $2}' .config)"
+EMACS_DATE_TEST="$(awk '/^emacs-date/ {print $2}' .config)"
+
+echo "Bootstrap compiler: ${BOOTSTRAP_COMPILER_URL}/${BOOTSTRAP_COMPILER_NAME}"
+echo "Dated: ${BOOTSTRAP_COMPILER_DATE}"
+echo "Cloning Mercury git source since: ${GIT_SOURCE_SINCE}"
+echo "From URL: ${MERCURY_GIT_URL}"
+echo "Default revision: ${MERCURY_DEFAULT_REV}"
+echo "Emacs revision: ${EMACS_REV_TEST}"
+echo "Emacs date: ${EMACS_DATE_TEST}"
+echo "------------------------------------------------------------------------"
+echo
 
 # ROTDS builds can sometimes crash
 # In .config, a reference revision hash is given for a successful build.
 # If either is left blank, 06f81f1cf0d339a is used in the Mercury
-# git repository master branch and ROTD used is dated 2022-01-09
+# git repository master branch and ROTD used is dated 
+# $BOOTSTRAP_COMPILER_DATE.
 # These parameters in .config can be overridden on command line
 
 if [ $# = 1 ]
@@ -67,7 +97,7 @@ then
         exit 0
     elif [ "$1" = "--version" ]
     then
-        echo "ubuntu4mercury build script version $(cat VERSION)"
+        echo "gentoo4mercury build script version $(cat VERSION)"
         echo "Builds a Docker image with compilers"
 	echo "for the Mercury language (ROTD and git source)."
         echo "(C) Fabrice Nicol 2022."
@@ -80,7 +110,7 @@ then
     sed "s/REVISION/$1/g" Dockerfile.in > "${DOCKERFILE}"
     if [ -z "${ROTD_DATE_TEST}" ]
     then
-       ROTD_DATE=2022-01-09
+       ROTD_DATE=${BOOTSTRAP_COMPILER_DATE}
     else
        ROTD_DATE="${ROTD_DATE_TEST}"
     fi
@@ -97,15 +127,14 @@ then
 else
     if [ -z "${MERCURY_REV_TEST}" ] || [ -z "${ROTD_DATE_TEST}" ]
     then
-        ROTD_DATE=2022-01-09
-        MERCURY_REV=06f81f1cf0d339a
+        ROTD_DATE="${BOOTSTRAP_COMPILER_DATE}"
+        MERCURY_REV=${MERCURY_DEFAULT_REV}
     else
         ROTD_DATE="${ROTD_DATE_TEST}"
         MERCURY_REV="${MERCURY_REV_TEST}"
     fi
 
     echo "Using ROTD dated ${ROTD_DATE} and source rev. ${MERCURY_REV}"
-
     sed "s/-@/-${ROTD_DATE}/g" Dockerfile.in > "${DOCKERFILE}"
     sed -i "s/REVISION/${MERCURY_REV}/g" "${DOCKERFILE}"
 
@@ -114,22 +143,19 @@ else
 fi
 
 sed -i "s/THREADS_FOUND/${THREADS_FOUND}/g" ${DOCKERFILE}
+sed -i "s/BOOTSTRAP_COMPILER_NAME/${BOOTSTRAP_COMPILER_NAME}/g" ${DOCKERFILE}
+sed -i "s,BOOTSTRAP_COMPILER_URL,${BOOTSTRAP_COMPILER_URL},g" ${DOCKERFILE}
+sed -i "s/BOOTSTRAP_COMPILER_DATE/${BOOTSTRAP_COMPILER_DATE}/g" ${DOCKERFILE}
+sed -i "s/GIT_SOURCE_SINCE/${GIT_SOURCE_SINCE}/g" ${DOCKERFILE}
 
 # Below replacing HEAD by hash to avoid cache issues with Docker.
 
 if [ "${REVISION}" = "HEAD" ]
 then
-    REVISION=$(git ls-remote https://github.com/Mercury-Language/mercury.git HEAD| cut -f1)
+    REVISION=$(git ls-remote ${MERCURY_GIT_URL} HEAD| cut -f1)
     echo "Replacing non-hash revision with hash: ${REVISION}"
     echo "Note: HEAD^, HEAD~n are unsupported."
 fi
-
-# Emacs can sometimes crash
-# In .config, a reference revision hash is given for a successful build
-# If either is left blank, HEAD is used in the Emacs git repository master branch.
-
-EMACS_REF_TEST="$(grep '^rev' .config | cut -f 2 -d\ )"
-EMACS_DATE_TEST="$(grep '^date' .config | cut -f2 -d\ )"
 
 if [ -z "${EMACS_REF_TEST}" ] || [ -z "${EMACS_DATE_TEST}" ]
 then
@@ -139,8 +165,6 @@ else
     EMACS_DATE="${EMACS_DATE_TEST}"
     EMACS_REV="${EMACS_REF_TEST}"
 fi
-
-echo "Using Emacs source code at ${EMACS_DATE} and rev. ${EMACS_REV}"
 
 sed -i "s/EMACS_DATE/${EMACS_DATE}/g" ${DOCKERFILE}
 sed -i "s/EMACS_REV/${EMACS_REV}/g" ${DOCKERFILE}

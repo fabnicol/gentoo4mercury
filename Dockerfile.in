@@ -93,7 +93,7 @@ RUN emerge --depclean 2>&1 | tee -a log
 
 # Download auxiliary ROTD build, to bootstrap image building.
 
-RUN wget https://github.com/fabnicol/ubuntu4mercury/releases/download/v1.0.1/rotd.tar.xz
+RUN wget BOOTSTRAP_COMPILER_URL/BOOTSTRAP_COMPILER_NAME
 RUN tar xJvf rotd.tar.xz && rm rotd.tar.xz
 RUN echo PATH='/usr/local/mercury-rotd-@/bin:$PATH' >> /etc/profile
 
@@ -107,17 +107,17 @@ RUN echo 'source /etc/profile' >> /root/.bashrc
 # Rebuild the same ROTD dated -@ within the docker image for security-minded users.
 # Using ENV as sourcing /etc/profile will do only when the image is created, not while building it.
 
-ENV PATH=/usr/local/mercury-rotd-2022-01-09/bin:$PATH
+ENV PATH=/usr/local/mercury-rotd-BOOTSTRAP_COMPILER_DATE/bin:$PATH
 ENV THREADS=THREADS_FOUND
 ENV [ ${THREADS} = 0 ] && THREADS=1
 RUN echo "Using ${THREADS} for building."
 RUN cd mercury-srcdist-rotd-@ && /bin/bash configure && make install PARALLEL=-j${THREADS}
 RUN rm -rf /mercury-srcdist-rotd-@
-RUN if [ "-@" != "-2022-01-09" ]; then rm -rf /usr/local/mercury-rotd-2022-01-09; fi
+RUN if [ "-@" != "-BOOTSTRAP_COMPILER_DATE" ]; then rm -rf /usr/local/mercury-rotd-BOOTSTRAP_COMPILER_DATE; fi
 
 # Now with this secured ROTD build the Mercury git source.
 
-RUN git clone --shallow-since=2022-01-08 \
+RUN git clone --shallow-since=GIT_SOURCE_SINCE \
               -b master https://github.com/Mercury-Language/mercury.git \
               && cd /mercury && git reset --hard REVISION
 
