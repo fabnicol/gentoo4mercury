@@ -88,10 +88,9 @@ RUN emerge eix && eix-update
 # Should it fail, reverting would be easier.
 # Prefer webrsync over sync, to alleviate rsync server load
 
-RUN emerge-webrsync 2>&1 | tee -a log
-RUN emerge -uDN --with-bdeps=y @world 2>&1 | tee -a log \
-    && echo "[MSG] Docker image built! Launching depclean..."
-RUN emerge --depclean 2>&1 | tee -a log
+RUN emerge-webrsync 
+RUN emerge -uDN --with-bdeps=y @world   
+RUN emerge --depclean 
 
 # Download auxiliary ROTD build, to bootstrap image building.
 
