@@ -33,9 +33,7 @@ fi
 
 DOCKERFILE="Dockerfile"
 MERCURY_REV_TEST="$(awk '/^m-rev/ {print $2}' .config)"
-echo "Building Mercury revision: ${MERCURY_REV_TEST}"
 ROTD_DATE_TEST="$(awk '/^rotd-date/ {print $2}' .config)"
-echo "Building ROTD date: ${ROTD_DATE_TEST}"
 THREADS_FOUND="$(awk '/^threads/ {print $2}' .config)"
 case "${THREADS_FOUND}" in
     ''|*[!0-9]*)
@@ -61,9 +59,11 @@ EMACS_DATE_TEST="$(awk '/^emacs-date/ {print $2}' .config)"
 
 echo "Bootstrap compiler: ${BOOTSTRAP_COMPILER_URL}/${BOOTSTRAP_COMPILER_NAME}"
 echo "Dated: ${BOOTSTRAP_COMPILER_DATE}"
+echo "Default Mercury revision: ${MERCURY_REV_TEST}"
+echo "Fallback Mercury revision: ${MERCURY_DEFAULT_REV}"
+echo "Default ROTD date: ${ROTD_DATE_TEST}"
 echo "Cloning Mercury git source since: ${GIT_SOURCE_SINCE}"
 echo "From URL: ${MERCURY_GIT_URL}"
-echo "Default revision: ${MERCURY_DEFAULT_REV}"
 echo "Emacs revision: ${EMACS_REV_TEST}"
 echo "Emacs date: ${EMACS_DATE_TEST}"
 echo "------------------------------------------------------------------------"
