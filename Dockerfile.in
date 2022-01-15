@@ -30,7 +30,7 @@ RUN echo 'USE="-gtk -gtk2 -gtk3 -sandbox -introspection"' \
 # A bit of optimization on Haswell+
 
 RUN sed -i 's/^COMMON_FLAGS.*//g' /etc/portage/make.conf \
-    && echo 'COMMON_FLAGS="-march=core-avx2 -O2 -pipe"' > temp \
+    && echo 'COMMON_FLAGS="CFLAGS -O2 -pipe"' > temp \
     && cat /etc/portage/make.conf >> temp \
     && mv temp /etc/portage/make.conf
 RUN echo '>=media-libs/libsdl-1.2.15-r9 X'  > new.use

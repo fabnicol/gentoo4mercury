@@ -32,6 +32,7 @@ then
 fi
 
 DOCKERFILE="Dockerfile"
+CFLAGS_TEST="$(awk '/^cflags/ {print $2}' .config)"
 MERCURY_REV_TEST="$(awk '/^m-rev/ {print $2}' .config)"
 ROTD_DATE_TEST="$(awk '/^rotd-date/ {print $2}' .config)"
 THREADS_FOUND="$(awk '/^threads/ {print $2}' .config)"
@@ -142,6 +143,7 @@ else
     DATE="${ROTD_DATE}"
 fi
 
+sed -i "s/CFLAGS/${CFLAGS}/g" ${DOCKERFILE}
 sed -i "s/THREADS_FOUND/${THREADS_FOUND}/g" ${DOCKERFILE}
 sed -i "s/BOOTSTRAP_COMPILER_NAME/${BOOTSTRAP_COMPILER_NAME}/g" ${DOCKERFILE}
 sed -i "s,BOOTSTRAP_COMPILER_URL,${BOOTSTRAP_COMPILER_URL},g" ${DOCKERFILE}
