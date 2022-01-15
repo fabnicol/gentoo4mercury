@@ -1,0 +1,20 @@
+This repository contains the following files:
+
+.config:       A configuration file for build.sh. 
+build.sh:      The build script to create the Docker image.
+Dockerfile.in: Instructions for 'docker build', with
+               dummy dates and revisions filled in by build.sh
+LICENSE
+README.md
+VERSION        This is not a git tag.
+
+Under repertory doc/ :
+
+etags.1:
+etags.pdf:  Man help for the development version 
+            of the tagging capability of Emacs (supports Mercury).
+gentoo4mercury.html: 
+gentoo4mercury.pdf :  The README in other formats.
+
+ 
+

@@ -1,0 +1,44 @@
+<h1 id="gentoo4mercury">gentoo4mercury</h1>
+<p>Gentoo Docker image with fresh compilers for the <a href="https://github.com/Mercury-Language/mercury">Mercury</a> language.</p>
+<h2 id="pulling-the-image-from-docker-hub">Pulling the image from Docker hub</h2>
+<pre><code>sudo docker pull fabnicol/gentoo4mercury:latest</code></pre>
+<p>The Docker Hub image will probably not be updated as frequently as the Release section of this repository. Please read further to build the image from scratch.</p>
+<h2 id="building-the-docker-image">Building the Docker image</h2>
+<pre><code>git clone --depth=1 https://github.com/fabnicol/gentoo4mercury.git
+cd gentoo4mercury
+sudo ./build.sh</code></pre>
+<p>… or download from the Release section of this repository.</p>
+<p>For some time after the date of the ROTD mentioned in the generated Dockerfile, it is possible to try and build the compiler from git source at a given revision. For this, check official Mercury repository commits. For example, for the rotd of Jan. 9, 2022, the corresponding revision 06f81f1cf0d339a can be safely changed to 40ddd73098ae (Jan. 10, 2022). Then change the values of fields <code>rotd-date</code> (resp. <code>m-rev</code>) in the configuration file <strong>.config</strong> as indicated in the comments of this file.</p>
+<p>Alternatively, you can use the script <strong>build.sh</strong> with arguments as follows:</p>
+<pre><code># change the git source revision to be built:
+sudo ./build.sh REVISION
+# change the date of the ROTD to be built AND the git source revision:
+sudo ./build.sh YYYY-MM-DD REVISION</code></pre>
+<p>Examples:</p>
+<pre><code>sudo ./build.sh 4183b8d62f
+sudo ./build.sh 2022-01-10 4183b8d62f</code></pre>
+<p>Command line arguments always override field values in <strong>.config</strong>.<br />
+The date should be subsequent to 2022-01-09 and the revision to 06f81f1cf0d. Please note that the further from these references, the higher the risk of a build failure.<br />
+In the two-argument case, if the build succeeds, the git source revision indicated as the second argument has been built using the ROTD compiler dated as the first argument.</p>
+<p>Git revisions can be: revision hashes or HEAD.<br />
+HEAD^, HEAD^^, HEAD~n are unsupported.<br />
+Non-hash revisions (like HEAD) will be replaced by hashes in the build process.</p>
+<h2 id="contents">Contents</h2>
+<p>The docker image has two Mercury compilers. The default compiler is the ROTD indicated in field <strong>rotd-date</strong> of the configuration file <strong>.config</strong>, built with all grades.<br />
+The development compiler is built from git source, with only the most useful C grades (configured with <strong>–disable-most-grades</strong>). The default revision is specified by the field <strong>m-rev</strong> in <strong>.config</strong>.<br />
+Both compilers can build themselves and somewhat newer versions.</p>
+<p>The image contains a reasonable set of development libraries and tools, including a build toolchain, gdb and vim. Emacs is built from development git source with tagging support for Mercury using <code>etags</code>. Details are given on how to use <code>etags</code> for Mercury in the man page (<code>man etags</code>).</p>
+<p>Mercury compilers and emacs have been built within the Docker image in the course of its building process. A ROTD built under Gentoo from original sources is downloaded and used as a bootstrapping compiler, then is replaced by the ROTD built within the Docker container.</p>
+<h2 id="invocation">Invocation</h2>
+<p>[do this once and for all if you downloaded the compressed image from github]<br />
+<code># xz -d gentoo4mercury.tar.xz &amp;&amp; docker load -i gentoo4mercury.tar</code></p>
+<p><code># docker run -it gentoo:mercury [ or: fabnicol/gentoo4mercury:latest if you pulled]</code><br />
+<code>gentoo:mercury # mmc / mmake</code>: for ROTD versions.<br />
+<code>gentoo:mercury # mmc-dev / mmake-dev</code>: for Mercury git source versions.<br />
+<code>gentoo:mercury # emacs</code> : to launch Emacs from within the running container.</p>
+<p>To launch mmc (ROTD) in container from your host computer, run:</p>
+<pre><code># docker run -it [your image name] mmc [arguments]</code></pre>
+<p>Replace <code>mmc</code> (resp. <code>mmake</code>) with <code>mmc-dev</code> (resp. <code>mmake-dev</code>) for the git source development version.</p>
+<p>To launch Emacs in the container from your host computer, run:</p>
+<pre><code># docker run -it [your image name] /usr/local/emacs-DEV/bin/emacs</code></pre>
+<p>Emacs should run just as well (in non-GUI mode) as on your host and <code>mmc / mmake</code> will be in the PATH of the guest shell.</p>
