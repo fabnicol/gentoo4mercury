@@ -23,20 +23,45 @@
 # ROTD available.
 # Exits with code 0 on success and 1 on failure.
 
-if [ $# -gt 2 ] || [ $# = 0 ]
+help() {
+    echo "USAGE: $0 rotd-date [number of rotds after it] [--reuse] [--keep]"
+    echo
+    echo "OPTIONS:"
+    echo "--reuse: Optional argument. Reuse index.html already downloaded."
+    echo "--keep:  Optional argument. Do not remove temporary files."
+    echo "         These two options should come at the end in this order,"
+    echo "         after a numeric second argument."
+    echo "NOTE:"
+    echo "If the second argument is absent, it is taken to be equal to 1."
+    echo
+    echo "Examples: $0 2022-01-09 4 --reuse"
+    echo "          $0 2022-01-09 1 --reuse --keep"
+    echo "          $0 2022-01-09"
+}
+
+balk_out() {
+    echo "You entered a third and/or fourth argument that is not licit."
+    echo
+    help
+    exit 1
+}
+
+if [ $# -gt 4 ] || [ $# = 0 ]
 then
     echo "Enter the date of the latest ROTD as 1st argument"
     echo "and optionally the minimum number of ROTD after it."
-    echo "Exiting."
+    help
     exit 1
 fi
+
+reuse=false
+keep=false
 
 if [ $# = 1 ]
 then
     if [ "$1" = "--help" ]
     then
-        echo "USAGE: $0 rotd-date [number of rotds after it]"
-        echo "example: $0 2022-01-09 4"
+        help
         exit 0
     fi
     if [ "$1" = "--version" ]
@@ -53,21 +78,43 @@ else
         ''|*[!0-9]*)
             echo "ERR: Second argument is not licit."
             echo "Enter an integer second argument (>1)"
+            help
             exit 1
             ;;
         *)
-            echo "Looking for ${increment} ROTD after $1."
+            echo "Looking for ${increment} ROTD after $1." >/dev/stderr
             ;;
     esac
+    if [ $# -gt 2 ]
+    then
+        if [ "$3" = "--reuse" ]
+        then
+            reuse=true
+        else
+            balk_out
+        fi
+        if [ $# = 4 ]
+        then
+            if [ "$4" = "--keep" ]
+            then
+                keep=true
+            else
+                balk_out
+            fi
+        fi
+   fi
 fi
 
 # Download update
 
-[ -f index.html ] && rm index.html
-if ! wget http://dl.mercurylang.org/index.html -O index.html
+if [ "${reuse}" = false ]
 then
-    echo "Could not download index from Mercury website."
-    exit 1
+    [ -f index.html ] && rm index.html
+    if ! wget http://dl.mercurylang.org/index.html -O index.html
+    then
+        echo "Could not download index from Mercury website."
+        exit 1
+    fi
 fi
 
 # Extract ROTD list
@@ -105,7 +152,7 @@ then
         exit 1
     fi
     echo ${new_bc_date}
-    rm list list2
+    [ "${keep}" = false ] && rm list list2 index.html
 else
     echo "NODATE"
 fi

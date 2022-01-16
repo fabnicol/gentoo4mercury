@@ -25,9 +25,13 @@
 
 help() {
 
-    echo "USAGE: $0"
+    echo "USAGE: $0 [--help/--version/--reuse]"
+    echo
     echo "Returns the date of the latest ROTD,"
     echo "or NODATE if there is none."
+    echo "With option --reuse, file index.html"
+    echo "from a prior download will be parsed"
+    echo "in the current directory."
 }
 
 if [ $# -gt 2 ]
@@ -36,30 +40,38 @@ then
     exit 1
 fi
 
+reuse=false
+
 if [ $# = 1 ]
 then
     if [ "$1" = "--help" ]
     then
         help
         exit 0
-    fi
-    if [ "$1" = "--version" ]
+    elif [ "$1" = "--version" ]
     then
         echo "$0 (c) Fabrice Nicol 2022."
         echo "Licensed under the terms of the GPLv3."
         echo "See file LICENSE."
         echo "Version: $(cat VERSION)"
         exit 0
+    elif [ "$1" = "--reuse" ]
+    then
+        echo "Reusing index.html from prior download."
+        reuse=true
     fi
 fi
 
 # Download update
 
-[ -f index.html ] && rm index.html
-if ! wget http://dl.mercurylang.org/index.html -O index.html
+if [ "${reuse}" = "false" ]
 then
-    echo "Could not download index from Mercury website."
-    exit 1
+    [ -f index.html ] && rm index.html
+    if ! wget http://dl.mercurylang.org/index.html -O index.html
+    then
+        echo "Could not download index from Mercury website."
+        exit 1
+    fi
 fi
 
 # Extract ROTD list
