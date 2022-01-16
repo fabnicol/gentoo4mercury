@@ -37,12 +37,7 @@ RUN echo '>=media-libs/libsdl-1.2.15-r9 X'  > new.use
 RUN echo '>=media-libs/libglvnd-1.3.2-r2 X' >> new.use
 RUN echo '>=x11-libs/libxkbcommon-1.0.3 X'  >> new.use
 RUN echo '>=dev-libs/libpcre2-10.35 pcre16' >> new.use
-RUN echo 'sys-fs/squashfs-tools lzma' >> new.use
-RUN echo 'app-emulation/virtualbox -alsa -debug -doc dtrace headless -java libressl -lvm -opengl -opus pam -pax_kernel \
--pulseaudio -python -qt5 -sdk udev -vboxwebsrv -vnc' >> new.use
 RUN mv new.use /etc/portage/package.use
-RUN echo '>=app-emulation/virtualbox-extpack-oracle-6.1.18.142142 PUEL' \
-           >> /etc/portage/package.license
 RUN mkdir -p /etc/portage/package.accept_keywords \
 && echo '>=sys-apps/sandbox-2.21 ~amd64' > /etc/portage/package.accept_keywords/sandbox
 
@@ -155,9 +150,9 @@ RUN emerge -u --deep gdb vim
 RUN echo PATH='$PATH:/usr/local/emacs-DEV/bin' >> /etc/profile
 RUN echo MANPATH='$MANPATH:/usr/local/mercury-rotd-@/man' >> /etc/profile
 RUN echo INFOPATH='$INFOPATH:/usr/local/mercury-rotd-@/info' >> /etc/profile
-RUN echo "(add-to-list 'load-path \n\
-\"/usr/local/mercury-rotd-@/lib/mercury/elisp\") \n\
-(autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)" >> /root/.emacs
+RUN echo "(add-to-list 'load-path" > /root/.emacs \
+    && echo '"/usr/local/mercury-rotd-@/lib/mercury/elisp")' >> /root/.emacs \
+    && echo "(autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)" >> /root/.emacs
 RUN echo '#!/bin/bash' > /usr/local/bin/mmc-dev \
     && echo 'PATH0=$PATH' >> /usr/local/bin/mmc-dev \
     && echo 'PATH=/usr/local/mercury-DEV/bin:$PATH mmc "$@"' >> /usr/local/bin/mmc-dev \
