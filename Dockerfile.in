@@ -146,6 +146,10 @@ RUN cd emacs && /bin/bash autogen.sh \
    && /bin/bash configure --prefix=/usr/local/emacs-DEV \
    && make install -j${THREADS}
 
+# Other tools 
+
+RUN emerge -u --deep gdb vim
+
 # Adjust paths.
 
 RUN echo PATH='$PATH:/usr/local/emacs-DEV/bin' >> /etc/profile
