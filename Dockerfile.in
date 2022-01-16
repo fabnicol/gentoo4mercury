@@ -158,14 +158,16 @@ RUN echo INFOPATH='$INFOPATH:/usr/local/mercury-rotd-@/info' >> /etc/profile
 RUN echo "(add-to-list 'load-path \n\
 \"/usr/local/mercury-rotd-@/lib/mercury/elisp\") \n\
 (autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)" >> /root/.emacs
-RUN echo '#!/bin/bash \n\
-PATH0=$PATH \n\
-PATH=/usr/local/mercury-DEV/bin:$PATH mmc "$@" \n\
-PATH=$PATH0' > /usr/local/bin/mmc-dev && chmod +x /usr/local/bin/mmc-dev
-RUN echo '#!/bin/bash \n\
-PATH0=$PATH \n\
-PATH=/usr/local/mercury-DEV/bin:$PATH mmake "$@" \n\
-PATH=$PATH0' > /usr/local/bin/mmake-dev && chmod +x /usr/local/bin/mmake-dev
+RUN echo '#!/bin/bash' > /usr/local/bin/mmc-dev \
+    && echo 'PATH0=$PATH' >> /usr/local/bin/mmc-dev \
+    && echo 'PATH=/usr/local/mercury-DEV/bin:$PATH mmc "$@"' >> /usr/local/bin/mmc-dev \
+    && echo 'PATH=$PATH0' >> /usr/local/bin/mmc-dev \
+    && chmod +x /usr/local/bin/mmc-dev
+RUN echo '#!/bin/bash' > /usr/local/bin/mmake-dev \
+    && echo 'PATH0=$PATH' >> /usr/local/bin/mmake-dev \
+    && echo 'PATH=/usr/local/mercury-DEV/bin:$PATH mmake "$@"' >> /usr/local/bin/mmake-dev \
+    && echo 'PATH=$PATH0' >> /usr/local/bin/mmake-dev \
+    && chmod +x /usr/local/bin/mmake-dev
 
 # Clean up.
 
