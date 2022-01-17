@@ -8,6 +8,11 @@ LICENSE
 README.md
 VERSION        This is not a git tag.
 
+Auxiliary scripts:
+
+latest_rotd.sh Returns the date of the latest ROTD.
+new_rotd.sh    Returns the date of the nth next ROTD.
+
 Under repertory doc/ :
 
 etags.1:

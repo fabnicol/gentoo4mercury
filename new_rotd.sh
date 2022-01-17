@@ -72,6 +72,18 @@ then
         echo "Version: $(cat VERSION)"
         exit 0
     fi
+    case "$1" in
+        20[0-9][0-9]-[0-1][0-9]-[0-3][0-9])
+            echo "Looking for ROTD next after $1." >/dev/stderr
+            increment=1
+            ;;
+        *)
+            echo "ERR: Date is not licit."
+            echo "It should be YYYY-MM-DD"
+            help
+            exit 1
+            ;;
+    esac
 else
     increment=$2
     case "${increment}" in
@@ -87,11 +99,20 @@ else
     esac
     if [ $# -gt 2 ]
     then
-        if [ "$3" = "--reuse" ]
+        if [ $# = 3 ]
         then
-            reuse=true
-        else
-            balk_out
+            if [ "$3" = "--reuse" ]
+            then
+                reuse=true
+            fi
+            if [ "$3" = "--keep" ]
+            then
+                keep=true
+            fi
+            if ! ${keep} && ! ${true}
+            then
+                balk_out
+            fi
         fi
         if [ $# = 4 ]
         then
@@ -101,8 +122,14 @@ else
             else
                 balk_out
             fi
+            if [ "$3" = "--reuse" ]
+            then
+                reuse=true
+            else
+                balk_out
+            fi
         fi
-   fi
+    fi
 fi
 
 # Download update
