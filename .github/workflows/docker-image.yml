@@ -50,7 +50,7 @@ jobs:
             sudo /bin/bash build.sh ${date_latest} HEAD
             [ $? != 0 ] && echo "Could not create compliant image" && exit 3
             echo ${date_latest} > DATE
-            export container=$(sudo docker run gentoo4mercury:latest)
+            export container=$(sudo docker run gentoo)
             sudo docker cp ${container}:/usr/local/mercury-rotd-${date_latest} .
             sudo xz -cpvf rotd.tar.xz mercury-rotd-${date_latest} 
         else
