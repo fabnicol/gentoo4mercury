@@ -1,0 +1,85 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: 
+    - master 
+
+  pull_request:
+    branches: 
+    - master 
+
+  schedule:
+  - cron: "0 2 * * 1-5"
+  
+  workflow_dispatch:
+  
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build the Docker image
+      run: |
+        sudo apt install coreutils util-linux xz-utils
+        echo $'{\n  "experimental": true\n}' | sudo tee /etc/docker/daemon.json
+        mkdir -p ~/.docker
+        echo $'{\n  "experimental": "enabled"\n}' | sudo tee ~/.docker/config.json
+        sudo service docker restart
+        docker version -f '{{.Client.Experimental}}'
+        docker version -f '{{.Server.Experimental}}'
+        # download existing DATE and if there is a newer ROTD, adjust
+        export url_bc=https://github.com/fabnicol/gentoo4mercury/releases/download/release-master
+        if ! wget ${url_bc}/DATE; then
+            echo "No DATE file could be downloaded."
+            exit 1
+        else
+            export date_bc=$(cat DATE)
+        fi
+        echo "Using bootstrapping compiler: ${date_bc}"
+        sed -i "s/DATE_BC/${date_bc}/" .config.in
+        echo "Using bootstrapping URL: ${url_bc}"
+        sed "s,URL_BC,${url_bc},"      .config.in > .config
+        export date_latest=$(/bin/bash latest_rotd.sh)  
+        echo "Date of latest ROTD: ${date_latest}"
+        if [[ "${date_bc}" < "${date_latest}" ]] 
+        then
+            sudo /bin/bash build.sh ${date_latest} HEAD
+            [ $? != 0 ] && echo "Could not create compliant image" && exit 3
+            echo ${date_latest} > DATE
+            export container=$(sudo docker run gentoo4mercury:latest)
+            sudo docker cp ${container}:/usr/local/mercury-rotd-${date_latest} .
+            sudo xz -cpvf rotd.tar.xz mercury-rotd-${date_latest} 
+        else
+            echo "No newer ROTD." && exit 2
+        fi
+                   
+    - uses: dev-drprasad/delete-tag-and-release@v0.2.0
+      with:
+        delete_release: true # default: false
+        tag_name: release-master # tag name to delete
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload Release Assets
+      run: |
+        set -x
+        assets=()
+        tag_name="release-master"
+        for asset in DATE SUMS rotd.tar.xz gentoo4mercury-${tag_name}.tar.xz gentoo4mercury-${tag_name}.tar.xz; do
+          assets+=("-a" "$asset")
+        done
+        hub release create  "${assets[@]}" \
+        -m "Release $tag_name" \
+        -m "This release was automatically created by the Git Actions workflow corresponding to directory .github in the repository." \
+        -m "The output are:" \
+        -m "    DATE, a file containing the date of the ROTD built within the image;" \
+        -m "    rotd.tar.xz, a compressed package of this ROTD;" \                                                                                
+        -m "    SUMS, a checksum file;" \
+        -m "    two compressed Docker images built from Gentoo latest, containing the ROTD and the development version of the compiler;" \
+        "$tag_name"
+      env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}        
