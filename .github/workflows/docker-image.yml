@@ -25,9 +25,9 @@ jobs:
     - name: Build the Docker image
       run: |
         sudo apt install coreutils util-linux xz-utils
-        echo $'{\n  "experimental": true\n}' | sudo tee /etc/docker/daemon.json
+        echo '{\n  "experimental": true\n}' | sudo tee /etc/docker/daemon.json
         mkdir -p ~/.docker
-        echo $'{\n  "experimental": "enabled"\n}' | sudo tee ~/.docker/config.json
+        echo '{\n  "experimental": "enabled"\n}' | sudo tee ~/.docker/config.json
         sudo service docker restart
         docker version -f '{{.Client.Experimental}}'
         docker version -f '{{.Server.Experimental}}'
@@ -50,8 +50,9 @@ jobs:
             sudo /bin/bash build.sh ${date_latest} HEAD
             [ $? != 0 ] && echo "Could not create compliant image" && exit 3
             echo ${date_latest} > DATE
-            export container=$(sudo docker run gentoo)
-            sudo docker cp ${container}:/usr/local/mercury-rotd-${date_latest} .
+            export ID=$(sudo docker image ls -q | head -1)
+            sudo docker run --name gentoo4mercury ${ID}
+            sudo docker cp gentoo4mercury:/usr/local/mercury-rotd-${date_latest} .
             sudo xz -cpvf rotd.tar.xz mercury-rotd-${date_latest} 
         else
             echo "No newer ROTD." && exit 2
