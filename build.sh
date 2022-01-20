@@ -105,13 +105,12 @@ then
 	echo
         echo "Examples:"
 	echo "          ./build.sh 2022-01-10 4c6636982653"
-        echo "          ./build.sh 2022-01-10 HEAD~3"
         echo "          ./build.sh HEAD"
         echo "          ./build.sh"
 	echo
         echo "Without arguments, the builds uses"
-	echo "ROTD 2022-01-09 and git source code"
-	echo "at hash 06f81f1cf0d339a."
+	echo "ROTD ${ROTD_DATE_TEST} and git source code"
+	echo "at hash ${MERCURY_REV_TEST}."
         exit 0
     elif [ "$1" = "--version" ]
     then
