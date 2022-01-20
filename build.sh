@@ -249,6 +249,8 @@ then
                          && echo sha512sum: $(sha512sum gentoo4mercury.tar.gz) >> SUMS
       then
           echo "Compression performed."
+	  sudo chown runner SUMS *.xz *.gz
+	  sudo chgrp docker SUMS *.xz *.gz
           echo "Files present in current directory $PWD: $(ls -al)"
       else
           echo "Could not compress the image tarball."
