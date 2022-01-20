@@ -165,6 +165,7 @@ fi
 
 sed -i "s/CFLAGS/${CFLAGS}/g" ${DOCKERFILE}
 sed -i "s/THREADS_FOUND/${THREADS_FOUND}/g" ${DOCKERFILE}
+
 sed -i "s/BOOTSTRAP_COMPILER_NAME/${BOOTSTRAP_COMPILER_NAME}/g" ${DOCKERFILE}
 sed -i "s,BOOTSTRAP_COMPILER_URL,${BOOTSTRAP_COMPILER_URL},g" ${DOCKERFILE}
 sed -i "s/BOOTSTRAP_COMPILER_DATE/${BOOTSTRAP_COMPILER_DATE}/g" ${DOCKERFILE}
@@ -249,8 +250,8 @@ then
                          && echo sha512sum: $(sha512sum gentoo4mercury.tar.gz) >> SUMS
       then
           echo "Compression performed."
-	  sudo chown runner SUMS *.xz *.gz
-	  sudo chgrp docker SUMS *.xz *.gz
+	  chown runner SUMS *.xz *.gz
+	  chgrp docker SUMS *.xz *.gz
           echo "Files present in current directory $PWD: $(ls -al)"
       else
           echo "Could not compress the image tarball."
