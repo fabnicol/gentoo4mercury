@@ -1,0 +1,150 @@
+# Copyright (C) 2022  Fabrice Nicol
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+# name the portage image
+FROM gentoo/portage:latest AS portage
+
+# image is based on stage3-amd64
+FROM gentoo/stage3
+
+# copy the entire portage volume in
+COPY --from=portage /var/db/repos/gentoo /var/db/repos/gentoo
+
+# USE, ACCEPT_KEYWORDS and LICENSE fixes
+
+RUN echo 'USE="-gtk -gtk2 -gtk3 -sandbox -introspection"' \
+            >> /etc/portage/make.conf
+
+# A bit of optimization on Haswell+
+
+RUN sed -i 's/^COMMON_FLAGS.*//g' /etc/portage/make.conf \
+    && echo 'COMMON_FLAGS="CFLAGS -O2 -pipe"' > temp \
+    && cat /etc/portage/make.conf >> temp \
+    && mv temp /etc/portage/make.conf
+RUN echo '>=media-libs/libsdl-1.2.15-r9 X'  > new.use
+RUN echo '>=media-libs/libglvnd-1.3.2-r2 X' >> new.use
+RUN echo '>=x11-libs/libxkbcommon-1.0.3 X'  >> new.use
+RUN echo '>=dev-libs/libpcre2-10.35 pcre16' >> new.use
+RUN mv new.use /etc/portage/package.use
+RUN mkdir -p /etc/portage/package.accept_keywords \
+&& echo '>=sys-apps/sandbox-2.21 ~amd64' > /etc/portage/package.accept_keywords/sandbox
+RUN echo "=sys-libs/glibc-2.34-r4 ~amd64" > /etc/portage/package.accept_keywords/glibc
+RUN eselect profile set 1
+RUN emerge -uDN --backtrack=1000 =sys-libs/glibc-2.34-r4
+RUN emerge -u dev-vcs/git 2>&1 | tee -a log
+RUN emerge -uDN virtual/jre virtual/jdk
+
+# Merging first util-linux to facilitate possible debugging operations
+# within the container.
+
+RUN USE=caps emerge -u sys-apps/util-linux 2>&1 | tee -a log
+
+# Common maintenance precautions, might be dispensed with
+
+RUN env-update && source /etc/profile
+RUN emerge eix && eix-update
+
+# Download auxiliary ROTD build, to bootstrap image building.
+
+RUN wget BOOTSTRAP_COMPILER_URL/BOOTSTRAP_COMPILER_NAME
+RUN tar xJvf rotd.tar.xz && rm rotd.tar.xz
+RUN echo PATH='/usr/local/mercury-rotd-@/bin:$PATH' >> /etc/profile
+
+# Download from Github first then if not available from official website.
+
+RUN wget https://github.com/Mercury-Language/mercury-srcdist/archive/refs/tags/rotd-@.tar.gz \
+   || wget  https://dl.mercurylang.org/rotd/mercury-srcdist-rotd-@.tar.gz -O rotd-@.tar.gz
+RUN tar xzvf rotd-@.tar.gz && rm -vf rotd-@.tar.gz
+RUN echo 'source /etc/profile' >> /root/.bashrc
+
+# Rebuild the same ROTD dated -@ within the docker image for security-minded users.
+# Using ENV as sourcing /etc/profile will do only when the image is created, not while building it.
+
+ENV PATH=/usr/local/mercury-rotd-BOOTSTRAP_COMPILER_DATE/bin:$PATH
+ENV THREADS=THREADS_FOUND
+ENV [ ${THREADS} = 0 ] && THREADS=1
+RUN echo "Using ${THREADS} for building."
+RUN cd mercury-srcdist-rotd-@ && /bin/bash configure && make install PARALLEL=-j${THREADS}
+RUN rm -rf /mercury-srcdist-rotd-@
+RUN if [ "-@" != "-BOOTSTRAP_COMPILER_DATE" ]; then rm -rf /usr/local/mercury-rotd-BOOTSTRAP_COMPILER_DATE; fi
+
+# Now with this secured ROTD build the Mercury git source.
+
+RUN git clone --shallow-since=GIT_SOURCE_SINCE \
+              -b master https://github.com/Mercury-Language/mercury.git \
+              && cd /mercury && git reset --hard REVISION
+
+# Now use the fresh ROTD dated -@ to build the git source at revision REVISION.
+# Synchronize the ROTD and git source dates otherwise it may not build.
+
+ENV PATH=/usr/local/mercury-rotd-@/bin:$PATH
+RUN cd /mercury \
+   && /bin/bash prepare.sh && /bin/bash configure --disable-most-grades \
+   && make install PARALLEL=-j${THREADS} && git rev-parse HEAD > HEAD_HASH
+RUN echo PATH='$PATH:/usr/local/mercury-DEV/bin' >> /etc/profile
+RUN rm -rf /mercury
+
+# First merge Emacs dependencies
+
+RUN emerge -uDN libXaw 
+RUN emerge --onlydeps app-editors/emacs
+
+# Clone emacs, with Mercury support for etags (source code tagging).
+
+RUN echo cloning since date="EMACS_DATE" rev="EMACS_REV" \
+    && git clone --shallow-since="EMACS_DATE" -b master git://git.sv.gnu.org/emacs.git \
+    && cd emacs && git reset --hard "EMACS_REV"
+
+RUN cd emacs && /bin/bash autogen.sh \
+   && /bin/bash configure --without-tiff \
+                          --without-jpeg \
+			  --without-png \
+			  --without-gif \
+                          --prefix=/usr/local/emacs-DEV \
+   && make install -j${THREADS}
+
+# Other tools 
+
+RUN emerge -u --deep gdb vim
+
+# Adjust paths.
+
+RUN echo PATH='$PATH:/usr/local/emacs-DEV/bin' >> /etc/profile
+RUN echo MANPATH='$MANPATH:/usr/local/mercury-rotd-@/man' >> /etc/profile
+RUN echo INFOPATH='$INFOPATH:/usr/local/mercury-rotd-@/info' >> /etc/profile
+RUN echo "(add-to-list 'load-path" > /root/.emacs \
+    && echo '"/usr/local/mercury-rotd-@/lib/mercury/elisp")' >> /root/.emacs \
+    && echo "(autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)" >> /root/.emacs
+RUN echo '#!/bin/bash' > /usr/local/bin/mmc-dev \
+    && echo 'PATH0=$PATH' >> /usr/local/bin/mmc-dev \
+    && echo 'PATH=/usr/local/mercury-DEV/bin:$PATH mmc "$@"' >> /usr/local/bin/mmc-dev \
+    && echo 'PATH=$PATH0' >> /usr/local/bin/mmc-dev \
+    && chmod +x /usr/local/bin/mmc-dev
+RUN echo '#!/bin/bash' > /usr/local/bin/mmake-dev \
+    && echo 'PATH0=$PATH' >> /usr/local/bin/mmake-dev \
+    && echo 'PATH=/usr/local/mercury-DEV/bin:$PATH mmake "$@"' >> /usr/local/bin/mmake-dev \
+    && echo 'PATH=$PATH0' >> /usr/local/bin/mmake-dev \
+    && chmod +x /usr/local/bin/mmake-dev
+
+# Clean up.
+
+RUN rm -rf /emacs
+RUN emerge --depclean 2>&1 | tee -a log
+RUN revdep-rebuild 2>&1 | tee -a log \
+      && echo "[MSG] Docker image ready. Check build log."
+RUN env-update
+RUN rm -rf /var/cache/distfiles  /var/tmp/* /tmp/* /var/log/* /var/db/repos/gentoo/*
+RUN rm -rf /usr/src/*
+

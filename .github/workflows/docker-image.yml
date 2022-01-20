@@ -1,0 +1,109 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: 
+    - master 
+
+  pull_request:
+    branches: 
+    - master 
+
+  schedule:
+  - cron: "0 2 * * 1-5"
+  
+  workflow_dispatch:
+  
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build the Docker image
+      run: |
+        sudo apt install coreutils util-linux xz-utils gawk
+        echo $'{\n  "experimental": true\n}' | sudo tee /etc/docker/daemon.json
+        mkdir -p ~/.docker
+        echo $'{\n  "experimental": "enabled"\n}' | sudo tee ~/.docker/config.json
+        sudo service docker restart
+        docker version -f '{{.Client.Experimental}}'
+        docker version -f '{{.Server.Experimental}}'
+        # download existing DATE and if there is a newer ROTD, adjust
+        export url_bc=$(awk '/^bootstrap-url/ {print $2}' .config.in)
+        if ! wget ${url_bc}/DATE; then
+            echo "No DATE file could be downloaded."
+            exit 1
+        else
+            export date_bc=$(cat DATE)
+        fi
+        echo "Using bootstrapping compiler: ${date_bc}"
+        echo "Using bootstrapping URL: ${url_bc}"
+        export date_latest=$(/bin/bash latest_rotd.sh)  
+        echo "Date of latest ROTD: ${date_latest}"
+        if [[ "${date_bc}" < "${date_latest}" || "${date_bc}" == "${date_latest}" ]] 
+        then
+            sudo /bin/bash build_latest.sh --reuse
+            [ $? != 0 ] && echo "Could not create compliant image" && exit 3
+            echo ${date_latest} > DATE
+            export ID=$(sudo docker image ls -q | head -1)
+            sudo docker run --name gentoo4mercury ${ID}
+            sudo docker cp gentoo4mercury:/usr/local/mercury-rotd-${date_latest} /usr/local
+            sudo tar cpJvf rotd.tar.xz /usr/local/mercury-rotd-${date_latest} 
+            sudo chown runner DATE SUMS rotd.tar.xz gentoo4mercury.tar.xz gentoo4mercury.tar.gz
+            sudo chgrp docker DATE SUMS rotd.tar.xz gentoo4mercury.tar.xz gentoo4mercury.tar.gz
+            echo "Files in current directory $PWD: $(ls -al)"
+            sudo docker tag ${ID} fabnicol/gentoo4mercury:latest
+        else
+            echo "No newer ROTD." && exit 2
+        fi
+
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+        
+    - name: Login to DockerHub
+      uses: docker/login-action@v1
+      with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          
+    - name: Build and push
+      uses: docker/build-push-action@v2
+      with:
+          context: .
+
+          push: true
+          tags: fabnicol/gentoo4mercury:latest
+          
+    - uses: dev-drprasad/delete-tag-and-release@v0.2.0
+      with:
+        delete_release: true # default: false
+        tag_name: release-master # tag name to delete
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload Release Assets
+      run: |
+        set -x
+        assets=()
+        tag_name="release-master"
+        echo "Files in current directory $PWD: $(ls -al)"
+        for asset in DATE SUMS rotd.tar.xz gentoo4mercury.tar.xz gentoo4mercury.tar.gz; do
+          assets+=("-a" "$asset")
+        done
+        sudo hub release create  "${assets[@]}" \
+        -m "Release $tag_name" \
+        -m "This release was automatically created by the Git Actions workflow corresponding to directory .github in the repository." \
+        -m "The output are:" \
+        -m "    DATE, a file containing the date of the ROTD built within the image;" \
+        -m "    rotd.tar.xz, a compressed package of this ROTD;" \                                                                                
+        -m "    SUMS, a checksum file;" \
+        -m "    two compressed Docker images built from Gentoo latest, containing the ROTD and the development version of the compiler;" \
+        "$tag_name"
+      env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}        

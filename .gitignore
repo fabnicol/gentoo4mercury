@@ -1,0 +1,8 @@
+DATE*
+.config
+Dockerfile
+"#*"
+*.tar
+*.gz
+*.xz
+
