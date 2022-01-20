@@ -52,8 +52,8 @@ jobs:
             sudo docker run --name gentoo4mercury ${ID}
             sudo docker cp gentoo4mercury:/usr/local/mercury-rotd-${date_latest} /usr/local
             sudo tar cpJvf rotd.tar.xz /usr/local/mercury-rotd-${date_latest} 
-            sudo chown runner DATE SUMS rotd.tar.xz gentoo4mercury.tar.xz gentoo4mercury.tar.gz
-            sudo chgrp docker DATE SUMS rotd.tar.xz gentoo4mercury.tar.xz gentoo4mercury.tar.gz
+            sudo chown runner DATE rotd.tar.xz 
+            sudo chgrp docker DATE rotd.tar.xz 
             echo "Files in current directory $PWD: $(ls -al)"
             sudo docker tag ${ID} fabnicol/gentoo4mercury:latest
         else
