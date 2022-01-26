@@ -38,7 +38,9 @@ RUN env-update && ldconfig
 # First merge Emacs dependencies
 
 RUN emerge -uDN libXaw pax-utils  \
-    sys-kernel/linux-headers x11-libs/cairo sys-libs/ncurses
+    sys-kernel/linux-headers 
+
+RUN USE="X" emerge -uDN  x11-libs/cairo sys-libs/ncurses
 
 RUN echo '>=sys-libs/libseccomp-2.5.3 ~amd64' > /etc/portage/package.accept_keywords/libseccomp
 RUN emerge sys-libs/libseccomp
@@ -88,5 +90,5 @@ RUN echo '#!/bin/bash' > /usr/local/bin/mmake-dev \
 RUN rm -rf /emacs
 RUN emerge --depclean 2>&1 | tee -a log
 RUN env-update
-RUN rm -rf /var/cache/distfiles  /var/tmp/* /tmp/* /var/log/* /var/db/repos/gentoo/*
+RUN rm -rf log /var/cache/distfiles  /var/tmp/* /tmp/* /var/log/* /var/db/repos/gentoo/*
 RUN rm -rf /usr/src/*

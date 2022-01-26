@@ -31,6 +31,17 @@ The workflow unrolls along these lines:
     
 Please read further if you want to build the image from scratch.   
 
+## Versioning
+
+Version of the Mercury ROTD compiler:   
+
+    sudo docker run [image] mmc --version
+    
+Git revision hash of the Mercury development compiler:  
+
+    sudo docker run [image] cat GIT_HEAD
+      
+
 ## Building the Docker image
 
     git clone --depth=1 https://github.com/fabnicol/gentoo4mercury.git
