@@ -1,0 +1,92 @@
+# Copyright (C) 2022  Fabrice Nicol
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+FROM gentoo:mercuryREVISION
+
+# Now with this secured ROTD build the Mercury git source.
+
+RUN git clone --shallow-since=GIT_SOURCE_SINCE \
+              -b master https://github.com/Mercury-Language/mercury.git \
+              && cd /mercury && git reset --hard REVISION
+
+# Now use the fresh ROTD dated -@ to build the git source at revision REVISION.
+# Synchronize the ROTD and git source dates otherwise it may not build.
+
+ENV PATH=/usr/local/mercury-rotd-@/bin:$PATH
+ENV THREADS=THREADS_FOUND
+RUN cd /mercury \
+        && /bin/bash prepare.sh && /bin/bash configure --disable-most-grades \
+        && make install PARALLEL=-j${THREADS}  \
+        && git rev-parse HEAD > ../GIT_HEAD
+RUN echo PATH='$PATH:/usr/local/mercury-rotd-@/bin:/usr/local/mercury-DEV/bin' >> /etc/profile
+RUN rm -rf /mercury
+
+RUN env-update && ldconfig
+
+# First merge Emacs dependencies
+
+RUN emerge -uDN libXaw pax-utils  \
+    sys-kernel/linux-headers x11-libs/cairo sys-libs/ncurses
+
+RUN echo '>=sys-libs/libseccomp-2.5.3 ~amd64' > /etc/portage/package.accept_keywords/libseccomp
+RUN emerge sys-libs/libseccomp
+
+RUN emerge -o -uDN app-editors/emacs
+
+# Clone emacs, with Mercury support for etags (source code tagging).
+
+RUN echo cloning since date="EMACS_DATE" rev="EMACS_REV" \
+    && git clone --shallow-since="EMACS_DATE" -b master git://git.sv.gnu.org/emacs.git \
+    && cd emacs && git reset --hard "EMACS_REV"
+
+RUN cd emacs && /bin/bash autogen.sh \
+   && /bin/bash configure --without-tiff \
+                          --without-jpeg \
+                          --without-png \
+                          --without-gif \
+                          --without-mailutils \
+                          --prefix=/usr/local/emacs-DEV \
+   && make install -j${THREADS}
+
+# Other tools
+
+RUN emerge -u --deep gdb vim
+
+# Adjust paths.
+
+RUN echo PATH='$PATH:/usr/local/emacs-DEV/bin' >> /etc/profile
+RUN echo MANPATH='$MANPATH:/usr/local/mercury-rotd-@/man' >> /etc/profile
+RUN echo INFOPATH='$INFOPATH:/usr/local/mercury-rotd-@/info' >> /etc/profile
+RUN echo "(add-to-list 'load-path" > /root/.emacs \
+    && echo '"/usr/local/mercury-rotd-@/lib/mercury/elisp")' >> /root/.emacs \
+    && echo "(autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)" >> /root/.emacs
+RUN echo '#!/bin/bash' > /usr/local/bin/mmc-dev \
+    && echo 'PATH0=$PATH' >> /usr/local/bin/mmc-dev \
+    && echo 'PATH=/usr/local/mercury-DEV/bin:$PATH mmc "$@"' >> /usr/local/bin/mmc-dev \
+    && echo 'PATH=$PATH0' >> /usr/local/bin/mmc-dev \
+    && chmod +x /usr/local/bin/mmc-dev
+RUN echo '#!/bin/bash' > /usr/local/bin/mmake-dev \
+    && echo 'PATH0=$PATH' >> /usr/local/bin/mmake-dev \
+    && echo 'PATH=/usr/local/mercury-DEV/bin:$PATH mmake "$@"' >> /usr/local/bin/mmake-dev \
+    && echo 'PATH=$PATH0' >> /usr/local/bin/mmake-dev \
+    && chmod +x /usr/local/bin/mmake-dev
+
+# Clean up.
+
+RUN rm -rf /emacs
+RUN emerge --depclean 2>&1 | tee -a log
+RUN env-update
+RUN rm -rf /var/cache/distfiles  /var/tmp/* /tmp/* /var/log/* /var/db/repos/gentoo/*
+RUN rm -rf /usr/src/*

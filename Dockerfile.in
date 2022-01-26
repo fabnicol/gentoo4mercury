@@ -1,0 +1,69 @@
+# Copyright (C) 2022  Fabrice Nicol
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+# name the portage image
+FROM gentoo/portage:latest AS portage
+
+# image is based on stage3-amd64
+FROM gentoo/stage3
+
+# copy the entire portage volume in
+COPY --from=portage /var/db/repos/gentoo /var/db/repos/gentoo
+
+# USE, ACCEPT_KEYWORDS and LICENSE fixes
+
+RUN echo 'USE="-gtk -gtk2 -gtk3 -sandbox -introspection"' \
+            >> /etc/portage/make.conf
+
+# A bit of optimization on Haswell+
+
+RUN sed -i 's/^COMMON_FLAGS.*//g' /etc/portage/make.conf \
+    && echo 'COMMON_FLAGS="CFLAGS -O2 -pipe"' > temp \
+    && cat /etc/portage/make.conf >> temp \
+    && mv temp /etc/portage/make.conf
+RUN echo '>=media-libs/libsdl-1.2.15-r9 X'  > new.use
+RUN echo '>=media-libs/libglvnd-1.3.2-r2 X' >> new.use
+RUN echo '>=x11-libs/libxkbcommon-1.0.3 X'  >> new.use
+RUN echo '>=dev-libs/libpcre2-10.35 pcre16' >> new.use
+RUN mv new.use /etc/portage/package.use
+RUN mkdir -p /etc/portage/package.accept_keywords \
+&& echo '>=sys-apps/sandbox-2.21 ~amd64' > /etc/portage/package.accept_keywords/sandbox
+RUN eselect profile set 1
+RUN emerge -u dev-vcs/git 2>&1 | tee -a log
+RUN emerge -1 sys-apps/shadow
+RUN emerge -uDN --backtrack=500 virtual/jre
+RUN emerge dev-util/cmake
+RUN USE=minimal emerge -uDN dev-lang/mono
+
+
+# Common maintenance precautions, might be dispensed with
+
+RUN env-update && source /etc/profile
+RUN emerge eix && eix-update
+
+# Download from Github first then if not available from official website.
+
+RUN wget  https://dl.mercurylang.org/rotd/mercury-srcdist-rotd-@.tar.gz -O rotd-@.tar.gz
+RUN tar xzvf rotd-@.tar.gz && rm -vf rotd-@.tar.gz
+RUN echo 'source /etc/profile' >> /root/.bashrc
+
+# (Re)build the ROTD dated -@ within the docker image for security-minded users.
+# Using ENV as sourcing /etc/profile will do only when the image is created, not while building it.
+
+ENV THREADS=THREADS_FOUND
+ENV [ ${THREADS} = 0 ] && THREADS=1
+RUN echo "Using ${THREADS} for building."
+RUN cd mercury-srcdist-rotd-@ && /bin/bash configure && make install PARALLEL=-j${THREADS}
+RUN rm -rf /mercury-srcdist-rotd-@

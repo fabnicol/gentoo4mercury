@@ -1,0 +1,64 @@
+# Fields in this config file should be left-aligned flush on
+# the start of line.
+
+[Gentoo]
+# This is ti be used only for the Gentoo image.
+# To be adjusted according to your compiler.
+# Optimally, cflags should be set at "-march=native"
+# The default use below is a good compromise between
+# performance and older CPU support.
+
+cflags  -march=core-avx2
+
+# Below indicate since which date and at which revision
+# Emacs master git source code is to be built.
+
+[emacs]
+# This is the date of the revision
+
+emacs-date 2022-01-09
+
+# The Emacs git source revision, master branch
+
+emacs-rev  f4bfe7834a95
+
+# Below indicate default values for ROTD date and mercury
+# git master source revision. These are default values when 
+# command line has no arguments. They can be overridden on
+# command line.
+
+[Mercury]
+# Date of the Mercury ROTD
+
+rotd-date 2022-01-15
+
+# Revision of the Mercury git source, master branch.
+# May be HEAD or a hash
+
+m-rev    736b52c5c27d8741e
+
+# For example one may uncomment the values below and comment
+# out the above:
+#rotd-date 2022-01-10
+#m-rev 4c6636982653f
+
+# Number of parallel jobs for compiler Mercury source
+
+[jobs]
+threads 12
+
+# Compiler used for bootstrapping the builds
+
+[bootstrap]
+bootstrap-url  https://github.com/fabnicol/gentoo4mercury/releases/download/release-master
+bootstrap-name rotd.tar.xz
+bootstrap-date DATE_BC
+
+# Mercury git source URL, dates and revision to be used by default
+
+[Mercury git source]
+# Date at which to perform git --shallow-since= 
+
+since        2022-01-08
+url          https://github.com/Mercury-Language/mercury.git
+

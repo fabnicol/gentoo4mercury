@@ -1,0 +1,254 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: 
+    - main 
+
+  pull_request:
+    branches: 
+    - main
+
+  schedule:
+  - cron: "0 2 * * 1-5"
+  
+  workflow_dispatch:
+  
+jobs:
+
+  build_rotd:
+
+    runs-on: ubuntu-latest
+    env: 
+      COMPRESS_XZ: false
+      COMPRESS_GZ: false
+      
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v2
+    
+    - name: Build the Docker image
+      run: |
+        sudo apt -y install coreutils util-linux xz-utils gawk
+        echo $'{\n  "experimental": true\n}' | sudo tee /etc/docker/daemon.json
+        mkdir -p ~/.docker
+        echo $'{\n  "experimental": "enabled"\n}' | sudo tee ~/.docker/config.json
+        sudo service docker restart
+        docker version -f '{{.Client.Experimental}}'
+        docker version -f '{{.Server.Experimental}}'
+        # download existing DATE and if there is a newer ROTD, adjust
+        export url_bc=$(awk '/^bootstrap-url/ {print $2}' .config.in)
+        if ! wget ${url_bc}/DATE; then
+            echo "No DATE file could be downloaded."
+            exit 1
+        else
+            export date_bc=$(cat DATE)
+        fi
+        echo "Using bootstrapping compiler: ${date_bc}"
+        echo "Using bootstrapping URL: ${url_bc}"
+        export date_latest=$(/bin/bash latest_rotd.sh)  
+        echo "Date of latest ROTD: ${date_latest}"
+        if [[ "${date_bc}" < "${date_latest}" || "${date_bc}" == "${date_latest}" ]] 
+        then
+            sudo /bin/bash build_latest.sh --reuse
+            [ $? != 0 ] && echo "Could not create compliant image" && exit 3
+            echo ${date_latest} > DATE
+            export ID=$(sudo docker image ls -q | head -1)
+            sudo docker run --name gentoo4mercury ${ID}
+            sudo docker cp gentoo4mercury:/usr/local/mercury-rotd-${date_latest} /usr/local
+            sudo tar cpJvf rotd.tar.xz /usr/local/mercury-rotd-${date_latest} 
+            sudo chown runner rotd.tar.xz gentoo4mercury.tar*
+            sudo chgrp docker rotd.tar.xz gentoo4mercury.tar*
+            mkdir ${GITHUB_WORKSPACE}/tmp_gentoo4mercury
+            cp -v DATE GIT_HEAD gentoo4mercury.tar rotd.tar.xz Dockerfile Dockerfile2 \
+                 ${GITHUB_WORKSPACE}/tmp_gentoo4mercury
+            echo "HOME is: $HOME"
+            echo "Files in current directory $PWD: $(ls -al)"
+        else
+            echo "No newer ROTD." && exit 2
+        fi
+
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2.3.1
+      with:
+        name: gentoo4mercury
+        path: ${{ github.workspace }}/tmp_gentoo4mercury/*
+        # DATE GIT_HEAD gentoo4mercury.tar rotd.tar.xz 
+
+  build_dev:
+
+    runs-on: ubuntu-latest
+    needs: build_rotd
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v2
+      
+    - name: Download artifact
+      uses: actions/download-artifact@v2.1.0
+      with:
+          name: gentoo4mercury
+    
+    - name: Build the final image
+      run: |
+        sudo apt -y install coreutils util-linux xz-utils gawk
+        echo $'{\n  "experimental": true\n}' | sudo tee /etc/docker/daemon.json
+        mkdir -p ~/.docker
+        echo $'{\n  "experimental": "enabled"\n}' | sudo tee ~/.docker/config.json
+        sudo service docker restart
+        docker version -f '{{.Client.Experimental}}'
+        docker version -f '{{.Server.Experimental}}'
+        sudo docker load -i gentoo4mercury.tar
+        sudo docker build --squash --file Dockerfile2 .
+        export ID=$(sudo docker image ls -q | head -1)
+        echo "DATE:$(cat DATE)"
+        echo "REVISION:$(cat GIT_HEAD)"
+        export IMG=fabnicol/gentoo4mercury:$(cat DATE)-$(cat GIT_HEAD)
+        sudo docker tag ${ID} ${IMG}
+        sudo docker image ls -q | head -1
+        [ $? != 0 ] && echo "Could not create compliant image" && exit 3
+        rm -vf gentoo4mercury.tar
+        sudo docker save ${ID} -o gentoo4mercury.tar
+        sudo gzip -v -k gentoo4mercury.tar
+        sudo chown runner gentoo4mercury.tar*
+        sudo chgrp docker gentoo4mercury.tar*
+        b2sum gentoo4mercury.tar.* > SUMS
+        sha512sum gentoo4mercury.tar.* >> SUMS
+        mkdir ${GITHUB_WORKSPACE}/tmp_gentoo4mercury
+        cp -v \
+             DATE \
+             Dockerfile \
+             rotd.tar.xz \
+             GIT_HEAD \
+             SUMS \
+             gentoo4mercury.tar \
+             gentoo4mercury.tar.gz \
+               ${GITHUB_WORKSPACE}/tmp_gentoo4mercury
+        echo "HOME is: $HOME"
+        echo "Files in current directory $PWD: $(ls -al)"
+   
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2.3.1
+      with:
+        name: gentoo4mercury2
+        path: ${{ github.workspace }}/tmp_gentoo4mercury/*
+        
+  push:
+    runs-on: ubuntu-latest
+    needs: build_dev
+  
+    steps:
+    
+    - name: Set up Docker Buildx
+      id: buildx
+      uses: docker/setup-buildx-action@v1
+      
+    - name: Login to DockerHub
+      uses: docker/login-action@v1
+      with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          
+    - name: Login to Github Packages
+      uses: docker/login-action@v1
+      with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT }}
+    
+    - name: Download artifact
+      uses: actions/download-artifact@v2.1.0
+      with:
+          name: gentoo4mercury2
+          
+    - name: Check download and load image
+      run: |
+          ls -alR
+          docker load --input gentoo4mercury.tar
+          docker image ls -a
+          export MY_TAG=$(cat DATE)-$(cat GIT_HEAD)
+          echo "MY_TAG: ${MY_TAG}"
+                              
+    - name: Build and push
+      uses: docker/build-push-action@v2
+      with:
+          context: .
+          pull: false
+          push: true
+          tags: fabnicol/gentoo4mercury:${MY_TAG}  
+
+    - name: Retag
+      run: |
+          docker tag fabnicol/gentoo4mercury:${MY_TAG}  \
+             fabnicol/gentoo4mercury:latest
+             
+    - name: Build and push
+      uses: docker/build-push-action@v2
+      with:
+          context: .
+          pull: false
+          push: true
+          tags: fabnicol/gentoo4mercury:latest
+
+  release:
+
+    runs-on: ubuntu-latest
+    needs: build_dev
+  
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v2
+      
+    - name: Download artifact
+      uses: actions/download-artifact@v2.1.0
+      with:
+          name: gentoo4mercury2
+
+    - name: Check download
+      run:  ls -al
+      
+    - name : Cleanup release
+      uses: dev-drprasad/delete-tag-and-release@v0.2.0
+      with:
+        delete_release: true # default: false
+        tag_name: release-master # tag name to delete
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+      with:
+        tag_name: release-master
+        release_name: Release master
+        body: |
+          This release was automatically created by the Git Actions workflow corresponding to directory .github in the repository. 
+          Released files are: 
+          - DATE, a file containing the date of the ROTD built within the image; 
+          - GIT_HEAD, a file containing the revision of the git source; 
+          - rotd.tar.xz, a compressed package of this ROTD;                                                                                 
+          - gentoo4mercury.tar.gz, a GZ-compressed package of the image;                                                                                         
+          - SUMS, a file with checksums of the compressed image. 
+        draft: false
+        prerelease: false
+        
+    - uses: xresloader/upload-to-github-release@master
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        file: "DATE;GIT_HEAD;rotd.tar.xz;gentoo4mercury.tar.gz;SUMS"
+        overwrite: true
+        draft: false
+        prerelease: false
+        tag_name: release-master

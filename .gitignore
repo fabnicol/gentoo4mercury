@@ -1,0 +1,16 @@
+DATE*
+SUMS
+GIT_HEAD
+.config
+"#*"
+*.tar
+*.gz
+*.xz
+index.html
+*.orig
+Dockerfile1
+Dockerfile2
+*.tar
+*~
+
+
