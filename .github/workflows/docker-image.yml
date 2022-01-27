@@ -175,19 +175,20 @@ jobs:
           docker load --input gentoo4mercury.tar
           docker image ls -a
           export MY_TAG=$(cat DATE)-$(cat GIT_HEAD)
-          echo "MY_TAG: ${MY_TAG}"
-                              
+          echo "MY_TAG=${MY_TAG}" >> $GITHUB_ENV
+          echo "MY_TAG=${MY_TAG}"
+                    
     - name: Build and push
       uses: docker/build-push-action@v2
-      with:
+      with: 
           context: .
           pull: false
           push: true
-          tags: fabnicol/gentoo4mercury:${MY_TAG}  
+          tags: fabnicol/gentoo4mercury:${{ env.MY_TAG }}
 
     - name: Retag
       run: |
-          docker tag fabnicol/gentoo4mercury:${MY_TAG}  \
+          docker tag fabnicol/gentoo4mercury:${{ env.MY_TAG }} \
              fabnicol/gentoo4mercury:latest
              
     - name: Build and push
