@@ -177,13 +177,15 @@ jobs:
           export MY_TAG=$(cat DATE)-$(cat GIT_HEAD)
           echo "MY_TAG=${MY_TAG}" >> $GITHUB_ENV
           echo "MY_TAG=${MY_TAG}"
-                    
+          echo "FROM fabnicol/gentoo4mercury:${MY_TAG}" > Dockerfile
+ 
     - name: Build and push
       uses: docker/build-push-action@v2
       with: 
           context: .
           pull: false
           push: true
+          cache-from: type=local
           tags: fabnicol/gentoo4mercury:${{ env.MY_TAG }}
 
     - name: Retag
