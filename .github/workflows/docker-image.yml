@@ -108,10 +108,7 @@ jobs:
         export ID=$(sudo docker image ls -q | head -1)
         echo "DATE:$(cat DATE)"
         echo "REVISION:$(cat GIT_HEAD)"
-        export IMG=fabnicol/gentoo4mercury:$(cat DATE)-$(cat GIT_HEAD)
-        sudo docker tag ${ID} ${IMG}
-        sudo docker image ls -q | head -1
-        [ $? != 0 ] && echo "Could not create compliant image" && exit 3
+        echo "ID: ${ID}"
         rm -vf gentoo4mercury.tar
         sudo docker save ${ID} -o gentoo4mercury.tar
         sudo gzip -v -k gentoo4mercury.tar
@@ -165,26 +162,16 @@ jobs:
       uses: actions/download-artifact@v2.1.0
       with:
           name: gentoo4mercury2
-
-    - name: Check tag
-      run: |
-          export OLD_TAG=gentoo:mercury$(cat GIT_HEAD)
-          export NEW_TAG=fabnicol/gentoo4mercury:$(cat DATE)-$(cat GIT_HEAD)  
-          echo "OLD_TAG=${OLD_TAG}"
-          echo "OLD_TAG=${OLD_TAG}" >> $GITHUB_ENV
-          echo "NEW_TAG=${NEW_TAG}"
-          echo "NEW_TAG=${NEW_TAG}" >> $GITHUB_ENV
          
     - name: Load image and push
       run: |
           docker load --input gentoo4mercury.tar
           docker image ls -a
-          docker tag ${{ env.OLD_TAG }} ${{ env.NEW_TAG }}
-          docker push ${{ env.NEW_TAG }}
-          
-    - name: Retag
-      run: |
-          docker tag ${{ env.NEW_TAG }} fabnicol/gentoo4mercury:latest
+          export ID=$(sudo docker image ls -q | head -1)
+          export IMG=fabnicol/gentoo4mercury:$(cat DATE)-$(cat GIT_HEAD)
+          docker tag ${ID} ${IMG}
+          docker push ${IMG}
+          docker tag ${IMG} fabnicol/gentoo4mercury:latest
           docker push fabnicol/gentoo4mercury:latest
 
   release:
