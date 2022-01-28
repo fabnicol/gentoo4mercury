@@ -145,77 +145,47 @@ jobs:
   
     runs-on: ubuntu-latest
     needs: build_dev
-  
+
     steps:
-    
-    - name: Set up Docker Buildx
-      id: buildx
-      uses: docker/setup-buildx-action@v1
-      
+
     - name: Login to DockerHub
       uses: docker/login-action@v1
       with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          
+
     - name: Login to Github Packages
       uses: docker/login-action@v1
       with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_PAT }}
-    
+
     - name: Download artifact
       uses: actions/download-artifact@v2.1.0
       with:
           name: gentoo4mercury2
-   
-    - name: Check download and load image
-      run: |
-          ls -alR
-          export MY_TAG=$(cat DATE)-$(cat GIT_HEAD)
-          echo "MY_TAG=${MY_TAG}" >> $GITHUB_ENV
-          echo "MY_TAG=${MY_TAG}"
-          echo "FROM fabnicol/gentoo4mercury:${MY_TAG}" > Dockerfile
-          mkdir tmp
-          mkdir tmp2
-          
-    - name: Cache
-      uses: actions/cache@v2.1.7
-      with:
-          path: tmp,tmp2
-          key: ${{ runner.os }}-single-buildx-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-single-buildx
 
-    - name: Check download and load image
+    - name: Check tag
+      run: |
+          export OLD_TAG=gentoo:mercury$(cat GIT_HEAD)
+          export NEW_TAG=fabnicol/gentoo4mercury:$(cat DATE)-$(cat GIT_HEAD)  
+          echo "OLD_TAG=${OLD_TAG}"
+          echo "OLD_TAG=${OLD_TAG}" >> $GITHUB_ENV
+          echo "NEW_TAG=${NEW_TAG}"
+          echo "NEW_TAG=${NEW_TAG}" >> $GITHUB_ENV
+         
+    - name: Load image and push
       run: |
           docker load --input gentoo4mercury.tar
           docker image ls -a
- 
-    - name: Build and push Docker images
-      uses: docker/build-push-action@v2.8.0
-      with:
-          cache-from: type=local,src=tmp
-          cache-to: type=local,dest=tmp2
-          pull: false
-          push: true
-          context: .
-          tags: fabnicol/gentoo4mercury:${{ env.MY_TAG }}
-
+          docker tag ${{ env.OLD_TAG }} ${{ env.NEW_TAG }}
+          docker push ${{ env.NEW_TAG }}
+          
     - name: Retag
       run: |
-          docker tag fabnicol/gentoo4mercury:${{ env.MY_TAG }} \
-             fabnicol/gentoo4mercury:latest
-             
-    - name: Build and push
-      uses: docker/build-push-action@v2
-      with:
-          context: .
-          pull: false
-          push: true
-          tags: fabnicol/gentoo4mercury:latest
-          cache-from: type=local,src=tmp
-          cache-to: type=local,dest=tmp2
+          docker tag ${{ env.NEW_TAG }} fabnicol/gentoo4mercury:latest
+          docker push fabnicol/gentoo4mercury:latest
 
   release:
 
