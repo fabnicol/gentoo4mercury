@@ -64,7 +64,7 @@ RUN cd emacs && /bin/bash autogen.sh \
 
 # Other tools
 
-RUN emerge -u --deep gdb vim
+RUN emerge -u --deep gdb app-editors/vim app-editors/nano
 
 # Adjust paths.
 
