@@ -29,7 +29,7 @@ replace_head_revision() {
 	if [ "$1" = "HEAD" ]
 	then
 	    REVISION=$(git ls-remote ${MERCURY_GIT_URL} HEAD| cut -f1)
-        if grep -q -E grep -q -E '[a-z0-9]{40,40}' <<< "${REVISION}"
+        if grep -q -E '[a-z0-9]{40,40}' <<< "${REVISION}"
 	       echo "Replacing non-hash revision with hash: ${REVISION}"
            echo "Note: HEAD^, HEAD~n are unsupported."
         else
