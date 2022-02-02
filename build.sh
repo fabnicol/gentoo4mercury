@@ -129,7 +129,7 @@ then
         exit 0
     elif [ "$1" = "--version" ]
     then
-        echo "ubuntu4mercury build script version $(cat VERSION)"
+        echo "gentoo4mercury build script version $(cat VERSION)"
         echo "Builds a Docker image with compilers"
         echo "for the Mercury language (ROTD and git source)."
         echo "(C) Fabrice Nicol 2022."
@@ -254,9 +254,9 @@ else
     echo "Experimental version checked."
 fi
 
-if docker build --squash --file ${DOCKERFILE1} --tag ubuntu:mercury${REVISION} .
+if docker build --squash --file ${DOCKERFILE1} --tag gentoo:mercury${REVISION} .
 then
-    echo "Docker image was built as ubuntu:mercury${REVISION}"
+    echo "Docker image was built as gentoo:mercury${REVISION}"
 else
     echo "Docker image creation failed."
     exit 2
@@ -264,7 +264,7 @@ fi
 
 echo "${REVISION}" > GIT_HEAD
 
-if docker save ubuntu:mercury${REVISION} -o ubuntu4mercury.tar
+if docker save gentoo:mercury${REVISION} -o gentoo4mercury.tar
 then
     if [ "${COMPRESS_GZ}" = "true" ] || [ "${COMPRESS_XZ}" = "true" ]
     then
@@ -273,10 +273,10 @@ then
         echo "Compressing image..."
         if [ "${COMPRESS_XZ}" = "true" ]
         then
-            if  xz -9 -k -f ubuntu4mercury.tar
+            if  xz -9 -k -f gentoo4mercury.tar
             then
-                echo b2sum: $(b2sum ubuntu4mercury.tar.xz) >> SUMS
-                echo sha512sum: $(sha512sum ubuntu4mercury.tar.xz) >> SUMS
+                echo b2sum: $(b2sum gentoo4mercury.tar.xz) >> SUMS
+                echo sha512sum: $(sha512sum gentoo4mercury.tar.xz) >> SUMS
             else
                 echo "XZ-compression failed"
                 exit 1
@@ -284,10 +284,10 @@ then
         fi
         if [ "${COMPRESS_GZ}" = "true" ]
         then
-            if gzip -f -k ubuntu4mercury.tar
+            if gzip -f -k gentoo4mercury.tar
             then
-                echo b2sum: $(b2sum ubuntu4mercury.tar.gz) >> SUMS
-                echo sha512sum: $(sha512sum ubuntu4mercury.tar.gz) >> SUMS
+                echo b2sum: $(b2sum gentoo4mercury.tar.gz) >> SUMS
+                echo sha512sum: $(sha512sum gentoo4mercury.tar.gz) >> SUMS
             else
                 echo "GZ-compression failed"
                 exit 1

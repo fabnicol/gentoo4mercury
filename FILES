@@ -31,8 +31,8 @@ Under directory doc/ :
 etags.1:
 etags.pdf:  Man help for the development version 
             of the tagging capability of Emacs (supports Mercury).
-ubuntu4mercury.html: 
-ubuntu4mercury.pdf :  The README in other formats.
+gentoo4mercury.html: 
+gentoo4mercury.pdf :  The README in other formats.
 
  
 
