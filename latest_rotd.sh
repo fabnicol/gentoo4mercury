@@ -66,33 +66,28 @@ fi
 
 if [ "${reuse}" = "false" ]
 then
-    [ -f index.html ] && rm index.html
-    if ! wget http://dl.mercurylang.org/index.html -O index.html
+    ROTD=$(git ls-remote --tags --refs https://github.com/Mercury-Language/mercury-srcdist.git | tail -1 | cut -f2 | sed -E 's/.*\/rotd-([0-9]{4,4}-[0-9]{2,2}-[0-9]{2,2})/\1/')
+    if [ $? != 0 ] || [ -z "${ROTD}" ]
     then
-        echo "Could not download index from Mercury website."
+        echo "ERR: Could not retrieve dates from git remote." >&2
+        exit 100
+    fi
+    echo "${ROTD}" > LATEST_ROTD
+else
+    if [ -f LATEST_ROTD ]
+    then
+        ROTD=$(cat LATEST_ROTD)
+    else
+        echo "NODATE"
         exit 1
     fi
 fi
 
-# Extract ROTD list
-
-if ! grep -m 1 -o -E '"rotd/mercury-srcdist-rotd-(.*).tar.xz"' index.html > list
+if [ -n "${ROTD}" ]
 then
-    echo "Could not extract dates from Mercury HTML index."
-    exit 1
-fi
-    bc_date=$(sed -E -n \
-        's,.*rotd/mercury-srcdist-rotd-(.*).tar.xz.*,\1,p' list)
-    if [ $? != 0 ]
-    then
-        echo "Could not extract prior ROTD date."
-        exit 1
-    fi
-    rm list
-if [ -n "${bc_date}" ]
-then
-    echo "${bc_date}"
+    echo "${ROTD}"
+    exit 0
 else
     echo "NODATE"
+    exit 1
 fi
-exit 0
