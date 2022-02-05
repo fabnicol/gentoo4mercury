@@ -63,7 +63,7 @@ RUN echo 'source /etc/profile' >> /root/.bashrc
 # Using ENV as sourcing /etc/profile will do only when the image is created, not while building it.
 
 ENV THREADS=THREADS_FOUND
-ENV [ ${THREADS} = 0 ] && THREADS=1
+RUN if [ ${THREADS} = 0 ]; then THREADS=1; fi
 RUN echo "Using ${THREADS} for building."
 RUN cd mercury-srcdist-rotd-@ && /bin/bash configure && make install PARALLEL=-j${THREADS}
 RUN rm -rf /mercury-srcdist-rotd-@
