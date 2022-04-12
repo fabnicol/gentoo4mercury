@@ -94,12 +94,13 @@ Non-hash revisions (like HEAD) will be replaced by hashes in the build process.
 ## Contents
 
 The docker image has two Mercury compilers.
-The default compiler is the ROTD indicated in field **rotd-date** of the
-configuration file **.config.in**, built with all grades.  
+* If `./build.sh` is used, the default compiler is the ROTD indicated in field 
+**rotd-date** of the configuration file **.config.in**, built with all grades.  
 The development compiler is built from git source, with only the most
-useful C grades (configured with **--disable-most-grades**). The default
-revision is specified by the field **m-rev** in **.config.in**.  
+useful C grades (configured with **--disable-most-grades**).  
+The default revision is specified by the field **m-rev** in **.config.in**.  
 Both compilers can build themselves and somewhat newer versions.
+* If `./build_latest.sh` is used, the latest ROTD to date will be built.  
 
 The image contains a reasonable set of development libraries and tools,
 including a build toolchain, gdb and vim.
