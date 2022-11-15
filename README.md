@@ -6,6 +6,59 @@ Gentoo Docker image with fresh compilers for the
 ## Pulling the image from Docker hub
 
     sudo docker pull fabnicol/gentoo4mercury:latest
+    
+## Testing the Docker image
+
+    sudo docker -it fabnicol/gentoo4mercury:latest
+     
+*Building the mercury-csv library on GH*   
+     
+    git clone --depth=1 https://github.com/juliensf/mercury-json.git  
+    cd mercury-json  
+    make install  
+    make runtests 
+    (--> ALL TESTS PASSED)
+      
+*Test with a real json file*    
+   
+    cd samples  
+    make
+    wget https://support.oneskyapp.com/hc/en-us/article_attachments/202761727/example_2.json 
+    ./pretty example_1.json
+    (--> your pretty json file)
+    exit
+    
+Below is a quick Docker how-to for newcomers to this technology. You may skip this if you are fluent enough.    
+      
+If you need to enter your container later:  
+   
+    sudo docker container ls -a  
+    (* note your CONTAINER_ID *)  
+     
+Later use:    
+  
+    sudo docker start CONTAINER_ID
+    sudo docker exec -it CONTAINER_ID
+    (* perform your tasks *)
+    exit
+        
+Stop your given started container:   
+ 
+    sudo docker container stop CONTAINER_ID
+    
+or:    
+   
+Stop all your started containers:     
+  
+    sudo docker stop $(sudo docker ps -aq)
+   
+Remove all your Docker containers (full clean-up):     
+   
+    sudo docker rm $(sudo docker ps -aq)
+
+Remove all Docker images:    
+   
+    sudo docker rmi $(sudo docker images -q)
 
 ## Alternative way (GitHub Releases)
 
