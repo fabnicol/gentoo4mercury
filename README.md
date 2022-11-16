@@ -11,7 +11,7 @@ Gentoo Docker image with fresh compilers for the
 
     sudo docker -it fabnicol/gentoo4mercury:latest
      
-*Building the mercury-csv library on GH*   
+*Building the mercury-json library on GH*   
      
     git clone --depth=1 https://github.com/juliensf/mercury-json.git  
     cd mercury-json  
@@ -24,7 +24,7 @@ Gentoo Docker image with fresh compilers for the
     cd samples  
     make
     wget https://support.oneskyapp.com/hc/en-us/article_attachments/202761727/example_2.json 
-    ./pretty example_1.json
+    ./pretty example_2.json
     (--> your pretty json file)
     exit
     
