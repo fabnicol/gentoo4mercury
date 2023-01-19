@@ -9,7 +9,7 @@ Gentoo Docker image with fresh compilers for the
     
 ## Testing the Docker image
 
-    sudo docker -it fabnicol/gentoo4mercury:latest
+    sudo docker run -it fabnicol/gentoo4mercury:latest
      
 *Building the mercury-json library on GH*   
      
