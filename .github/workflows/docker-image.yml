@@ -31,12 +31,8 @@ jobs:
     - name: Build the Docker image
       run: |
         sudo apt -y install coreutils util-linux xz-utils gawk
-        echo $'{\n  "experimental": true\n}' | sudo tee /etc/docker/daemon.json
         mkdir -p ~/.docker
-        echo $'{\n  "experimental": "enabled"\n}' | sudo tee ~/.docker/config.json
         sudo service docker restart
-        docker version -f '{{.Client.Experimental}}'
-        docker version -f '{{.Server.Experimental}}'
         # download existing DATE and if there is a newer ROTD, adjust
         export url_bc=$(awk '/^bootstrap-url/ {print $2}' .config.in)
         if ! wget ${url_bc}/DATE; then
@@ -189,7 +185,7 @@ jobs:
       run:  ls -al
       
     - name : Cleanup release
-      uses: dev-drprasad/delete-tag-and-release@v0.2.1
+      uses: dev-drprasad/delete-tag-and-release@v1.1
       with:
         delete_release: true # default: false
         tag_name: release-master # tag name to delete
