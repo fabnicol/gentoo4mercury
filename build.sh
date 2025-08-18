@@ -218,42 +218,6 @@ sed -i "s/GIT_SOURCE_SINCE/${GIT_SOURCE_SINCE}/g" "${DOCKERFILE1}" "${DOCKERFILE
 sed -i "s/EMACS_DATE/${EMACS_DATE}/g" "${DOCKERFILE1}" "${DOCKERFILE2}"
 sed -i "s/EMACS_REV/${EMACS_REV}/g" "${DOCKERFILE1}" "${DOCKERFILE2}"
 
-client=$(docker version -f '{{.Client.Experimental}}')
-server=$(docker version -f '{{.Server.Experimental}}')
-echo "Docker experimental client: $client"
-echo "Docker experimental server: $server"
-
-if  [ "$client" = "false" ] ||  [ "$server" = "false" ]
-then
-    echo "Installing experimental Docker."
-    echo '{\n  "experimental": true\n}' | sudo tee /etc/docker/daemon.json
-    mkdir -p ~/.docker
-    echo '{\n  "experimental": "enabled"\n}' | sudo tee ~/.docker/config.json
-    if ! service docker restart
-    then
-        # for those with open-rc
-        rc-service docker restart
-    fi
-
-    # Test again.
-
-    client=$(docker version -f '{{.Client.Experimental}}')
-    server=$(docker version -f '{{.Server.Experimental}}')
-    echo "Docker experimental client: $client"
-    echo "Docker experimental server: $server"
-
-    # If a failure, balk out and tell what to do.
-
-    if  [ $client = false ] ||  [ $server = false ]
-    then
-        echo "Could not use experimental version of Docker. Remove --squash from script and run it again."
-        echo "(Also remove the present test!)"
-        exit 1
-    fi
-else
-    echo "Experimental version checked."
-fi
-
 if docker build --squash --file ${DOCKERFILE1} --tag gentoo:mercury${REVISION} .
 then
     echo "Docker image was built as gentoo:mercury${REVISION}"
