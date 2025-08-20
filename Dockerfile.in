@@ -44,7 +44,7 @@ RUN eselect profile set 1
 RUN emerge -u dev-vcs/git 2>&1 | tee -a log
 RUN emerge -1 sys-apps/shadow
 RUN emerge -uDN --backtrack=500 virtual/jre
-RUN emerge dev-util/cmake
+RUN emerge dev-build/cmake
 RUN USE=minimal emerge -uDN dev-lang/mono
 
 
